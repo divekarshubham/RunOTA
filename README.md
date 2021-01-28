@@ -1,5 +1,9 @@
 # RunOTA
 
+## Requirements
+1. Python 3.6+
+2. Install poetry using `curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -`
+
 ## Getting Started
 1. Clone the repo: `git clone git@github.com:divekarshubham/RunOTA.git && cd RunOTA/RunOTABinary`
 2. Install the requirements using `poetry install`
