@@ -20,3 +20,7 @@
 1. Specify the configurations of the project like bucket_name and update_role_arn in `config_project.py`
 2. Specify the project to build in `repository_root` in `config_project.py` e.g. `Path('/home/ubuntu/dev/csdk/aws-iot-device-sdk-embedded-C')`
 3. Create an update with `poetry run update <filename> <filepath>`. <filename> is the name of the binary when it is downloaded and <filepath> contains the actual binary to upload. e.g. `poetry run update ota_demo_core_mqtt2 /home/ubuntu/dev/csdk/aws-iot-device-sdk-embedded-C/build/bin/ota_demo_core_mqtt`
+
+### Interrupting an MQTT connection to the cloud
+1. Update the certificate, private key and endpoint in the `config_project.py`
+2. Establish a connection using `poetry run interrupt`
