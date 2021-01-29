@@ -6,6 +6,7 @@ authors = ["Shubham Divekar <divekarshubham@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.6.2"
+boto3 = "^1.14.40"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
@@ -17,3 +18,4 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 agent = "runotabinary.run_binary:main"
 build = "runotabinary.build_binary:main"
+update = "runotabinary.create_update:main"

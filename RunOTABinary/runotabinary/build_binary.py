@@ -105,8 +105,41 @@ class BuildBinary:
         logger.info("Build completed")
         return STATUS.PASS
 
+    def set_application_version(self, major=None, minor=None, build=None):
+        """Set aws_application_version.h with the input version.
+
+        Initialization version is usually 0.9.0 unless given otherwise.
+        OTA Canary uses non-default version to update.
+        """
+        if major == None:
+            major = self.project.version_major
+
+        if minor == None:
+            minor = self.project.version_minor
+
+        if build == None:
+            build = self.project.version_build
+
+        self.set_identifier_in_file(
+            {
+                '#define APP_VERSION_MAJOR': major,
+                '#define APP_VERSION_MINOR': minor,
+                '#define APP_VERSION_BUILD': build
+            },
+            os.path.join(self.project.repository_root, self.DEMO_CONFIG_PATH)
+        )
+
+    def increase_application_build_version(self):
+        """Increase the build version and store it
+        """
+        self.project.version_build += 1
+        self.set_application_version(build = self.project.version_build)
+
 def main():
     task = BuildBinary()
+    task.increase_application_build_version()
+    task.set_application_version()
+    
     task.build()
 
 if __name__ == "__main__":
