@@ -1,8 +1,10 @@
 import boto3
 import os
 import time
+import sys
 from runotabinary.configs.config_project import OtaProject
 from runotabinary.logger import logger
+from collections import namedtuple
 from uuid import uuid4
 
 
@@ -46,6 +48,18 @@ class CreateUpdate:
             logger.info(f'AFR_OTA-{jobId} job cancelled')
         except Exception as e:
             logger.error("Unable to cancel job with ID: " + jobId)
+            logger.error(f"Response: {response}, Exception: {e}")
+    
+    def delete_ota_update(self, otaUpdateId):
+        """
+        Cancel the input OTA Update. Cleans up the stream associated.
+        :param otaUpdateId(str): The AWS IoT OTA Update ID to cancel.
+        """
+        response = {}
+        try:
+            response = self._awsIotClient.delete_ota_update(otaUpdateId=otaUpdateId, deleteStream=True)
+        except Exception as e:
+            logger.error("Unable to delete ota update with ID: " + otaUpdateId)
             logger.error(f"Response: {response}, Exception: {e}")
     
     def upload_firmware_to_s3_bucket(self, localPathToFirmware, firmwareFileName):
@@ -167,6 +181,63 @@ class CreateUpdate:
 
         return otaUpdateId
 
+    def get_job_status(self, jobId):
+        """
+        Get the status of the OTA Update's job from the AWS IoT jobId.
+        :param jobId(str): The AWS IoT Job ID to get the status of.
+        :return: The job status and the reason for the status in a namedtuple.
+        """
+        JobStatus = namedtuple('JobStatus', 'status reason')
+        try:
+            response = {}
+            response = self._awsIotClient.describe_job_execution(jobId=jobId, thingName=self.project.thing_name)
+        except Exception as e:
+            logger.warning(f"ID:{jobId[-12:]} aws iot describe-job-execution failed. Err: {e}")
+            return JobStatus('UNDEFINED', 'aws iot describe-job-execution failed.')
+        executionResponse = response['execution']
+        job_status = JobStatus(executionResponse['status'], executionResponse['statusDetails'].get('detailsMap', {}).get('reason', ''))
+        logger.info(f"ID:{jobId[-12:]} {job_status}")
+        if executionResponse['status'] == "SUCCEEDED" or executionResponse['status'] == "IN_PROGRESS":
+            logger.error(executionResponse)
+        return job_status
+
+    def get_ota_update_result(self, ota_update_id, timeout, sleep_time=5):
+        '''
+        Non blocking call to get ota update status. Function return upon job completion.
+        :param ota_update_id: AWS OTA job id
+        :param timeout: Time after which the job fails
+        :return: Status os the update once it is finished
+        '''
+        seconds = 0
+        summary = None
+
+        # Get the AWS Iot Job ID
+        response = {}
+        response = self._awsIotClient.get_ota_update(otaUpdateId=ota_update_id)
+        job_id = response['otaUpdateInfo']['awsIotJobId']
+
+        finished_job_statuses = {'CANCELED', 'SUCCEEDED', 'FAILED', 'REJECTED', 'REMOVED'}
+        start = time.perf_counter()
+        summary = None
+        while True:
+            job_status = self.get_job_status(job_id)
+            if job_status.status in finished_job_statuses:
+                # logger.error(f"Version received from the cloud is : {self.get_version_number(job_id)}")
+                break
+            else:
+                time.sleep(sleep_time)
+
+            end = time.perf_counter()
+            if end - start > timeout:
+                logger.error(f"Timeout on OTA Update's job. (Timeout setting: {timeout})")
+                logger.info(f'start: {start}, end: {end}')
+                self.cancel_job(job_id)
+                summary = 'Timeout on OTA Update\'s job.'
+                break
+
+        self.delete_ota_update(ota_update_id)
+        return job_status, summary
+
 
 class AWSS3Bucket:
     """ AWS S3 Versioned Bucket."""
@@ -227,6 +298,7 @@ def main():
     #task = CreateUpdate(filename,filepath) 
     task = CreateUpdate(sys.argv[1], sys.argv[2])
     ota_update_id = task.create_ota_update()
+    task.get_ota_update_result(ota_update_id, 600)
     
 
 if __name__ == "__main__":
