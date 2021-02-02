@@ -198,7 +198,7 @@ class CreateUpdate:
         job_status = JobStatus(executionResponse['status'], executionResponse['statusDetails'].get('detailsMap', {}).get('reason', ''))
         logger.info(f"ID:{jobId[-12:]} {job_status}")
         if executionResponse['status'] == "SUCCEEDED" or executionResponse['status'] == "IN_PROGRESS":
-            logger.error(executionResponse)
+            logger.debug(executionResponse)
         return job_status
 
     def get_ota_update_result(self, ota_update_id, timeout, sleep_time=5):

@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import fileinput
+import boto3
 from subprocess import PIPE, STDOUT
 from runotabinary.configs.config_project import OtaProject
 from runotabinary.logger import logger
@@ -14,8 +15,8 @@ from datetime import datetime
 STATUS = Enum("STATUS", "PASS FAIL ERROR TIMEOUT")
 
 class BuildBinary:
-    def __init__(self):
-        self.project = OtaProject()
+    def __init__(self, ota_project):
+        self.project = ota_project
         #TODO self.project.check_setup()
 
         self.ota_targets = [
@@ -46,6 +47,8 @@ class BuildBinary:
             },
             os.path.join(self.project.repository_root, self.DEMO_CONFIG_PATH)
         )
+
+        self.set_codesigner_certificate(self.get_code_signer_certificate_from_arn())
     
     def set_identifier_in_file(self, prefixToValue, filePath):
         """
@@ -100,10 +103,10 @@ class BuildBinary:
         except Exception as e:
             logger.error(f"Error occured: {e}")
             traceback.print_exc()
-            return STATUS.ERROR
+            return STATUS.ERROR, ''
 
         logger.info("Build completed")
-        return STATUS.PASS
+        return STATUS.PASS, self.latest_build_firmware_path
 
     def set_application_version(self, major=None, minor=None, build=None):
         """Set aws_application_version.h with the input version.
@@ -134,12 +137,33 @@ class BuildBinary:
         """
         self.project.version_build += 1
         self.set_application_version(build = self.project.version_build)
+    
+    def set_codesigner_certificate(self, certificate):
+        """Set aws_ota_codesigner_certificate.h with the certificate specified.
+        """
+        codeSignerCertificatePath = os.path.join(self.project.repository_root, self.OTA_CODESIGNER_CERTIFICATE_PATH)
+        signerCertificateTag = 'static const char signingcredentialSIGNING_CERTIFICATE_PEM[] = '
+        for line in fileinput.input(files=codeSignerCertificatePath, inplace=True):
+            if (signerCertificateTag in line):
+                line = '{} {}\n'.format(signerCertificateTag, '\"' + certificate.replace('\n', '\\n') + '\";')
+            sys.stdout.write(line)
+    
+    def get_code_signer_certificate_from_arn(self, certArn=None):
+        """
+        Get the certificate stored in ACM identified by the input ARN.
+        If we are running in the beta stage, the certificate ARN for the designated region
+        should have been configured the board configuration JSON.
+        """
+        if not certArn:
+            certArn = self.project.ecdsa_signer_certificate_arn
+
+        certificate = ''
+        certificate = boto3.client('acm').get_certificate(CertificateArn=certArn)['Certificate']
+        return certificate
 
 def main():
-    task = BuildBinary()
-    task.increase_application_build_version()
-    task.set_application_version()
-    
+    task = BuildBinary(OtaProject())
+    task.increase_application_build_version()    
     task.build()
 
 if __name__ == "__main__":
