@@ -9,10 +9,14 @@ from uuid import uuid4
 
 
 class CreateUpdate:
-    def __init__(self, fileNameInUpload, fileToUpload):
+    def __init__(self, fileNameInUpload = None, fileToUpload = None, ota_project = OtaProject()):
         self._awsIotClient = boto3.client('iot')
-        self.project = OtaProject()
+        self.project = ota_project
         self._s3Bucket = AWSS3Bucket(self.project.s3_bucket_name)
+        self.filename = fileNameInUpload
+        self.filepath = fileToUpload
+
+    def setParams(self, fileNameInUpload, fileToUpload):
         self.filename = fileNameInUpload
         self.filepath = fileToUpload
 
@@ -161,8 +165,8 @@ class CreateUpdate:
                     'fileLocation': {
                         's3Location': {
                             'bucket': self.project.s3_bucket_name,
-                            'key': os.path.basename(self.filepath),
-                            'version': self._s3Bucket.get_s3_object(os.path.basename(self.filepath)).version_id
+                            'key': self.filename,
+                            'version': self._s3Bucket.get_s3_object(self.filename).version_id
                         }
                     },
                     'codeSigning': {
@@ -296,7 +300,7 @@ def main():
     #filename = 'ota_demo_core_mqtt2'
     #filepath = '/home/ubuntu/dev/csdk/aws-iot-device-sdk-embedded-C/build/bin/ota_demo_core_mqtt'
     #task = CreateUpdate(filename,filepath) 
-    task = CreateUpdate(sys.argv[1], sys.argv[2])
+    task = CreateUpdate(sys.argv[1], sys.argv[2], OtaProject())
     ota_update_id = task.create_ota_update()
     task.get_ota_update_result(ota_update_id, 600)
     

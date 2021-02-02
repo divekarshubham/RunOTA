@@ -16,6 +16,7 @@ class RunBinary(Thread):
         self._stop_read = False
         self._exit_run = False
         self.executable = Path(filename)
+        self.initial_exe = filename
         self.run_indefinitely = True # Set this to false for 1 run
         self.file_version = 2
         if logfilename:
@@ -54,7 +55,6 @@ class RunBinary(Thread):
 
     def run(self):
         try:
-
             while self._stop_read == False:
                 logger.info(f'Running binary: {self.executable}')
 
@@ -70,7 +70,7 @@ class RunBinary(Thread):
                     raise RuntimeError(f'Application stopped with Exit code:{exit_status}')
                 
                 if self.run_indefinitely:
-                    self.executable = Path(f'{self.executable}_{self.file_version}')
+                    self.executable = Path(f'{self.initial_exe}_{self.file_version}')
                     self.file_version += 1
                     cmd = f'sudo chmod 777 {self.executable}'.split()
                     result = subprocess.run(cmd, cwd=self.executable.parent, capture_output=True)

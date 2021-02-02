@@ -24,3 +24,7 @@
 ### Interrupting an MQTT connection to the cloud
 1. Update the certificate, private key and endpoint in the `config_project.py`
 2. Establish a connection using `poetry run interrupt`
+
+### Running the Canary
+1. Enter all the credentials in `config_project.py`
+2. Enter the command to run the canary: `poetry run canary`

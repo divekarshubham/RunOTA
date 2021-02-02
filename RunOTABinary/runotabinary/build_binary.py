@@ -131,6 +131,7 @@ class BuildBinary:
             },
             os.path.join(self.project.repository_root, self.DEMO_CONFIG_PATH)
         )
+        logger.debug(f'Setting version {major}.{minor}.{build} in {self.DEMO_CONFIG_PATH}')
 
     def increase_application_build_version(self):
         """Increase the build version and store it
